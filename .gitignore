@@ -1,0 +1,9 @@
+.idea
+**/__pycache__/
+**/.pyc
+output/
+outputs/
+wandb/
+notebooks/
+output/*.csv
+.DS_Store
