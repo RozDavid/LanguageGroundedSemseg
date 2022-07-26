@@ -6,13 +6,10 @@ import sys
 import time
 
 import numpy as np
-import torch
-import torch.multiprocessing as mp
 from pytorch_lightning import Trainer, Callback
-from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 import pytorch_lightning as pl
-from pytorch_lightning.plugins import DDPPlugin, DataParallelPlugin
+from pytorch_lightning.plugins import DDPPlugin
 import random
 import string
 
@@ -92,34 +89,12 @@ def main():
     NetClass = load_model(config.model)
 
     if config.wrapper_type == 'None':
-        if hasattr(data_loader.dataset, 'NUM_PARENT_LABELS'):
-            parent_labels = data_loader.dataset.NUM_PARENT_LABELS
-            child_labels = data_loader.dataset.NUM_CHILD_LABELS
-
-            if hasattr(data_loader.dataset, 'NUM_SUPERCAT_LABELS'):
-                supercat_labels = data_loader.dataset.NUM_SUPERCAT_LABELS
-                model = NetClass(num_in_channel, supercat_labels, parent_labels, child_labels, config)
-            else:
-                model = NetClass(num_in_channel, parent_labels, child_labels, config)
-        else:
-            model = NetClass(num_in_channel, num_labels, config)
-
+        model = NetClass(num_in_channel, num_labels, config)
         logging.info('===> Number of trainable parameters: {}: {}'.format(NetClass.__name__,
                                                                           count_parameters(model)))
     else:
         wrapper = load_wrapper(config.wrapper_type)
-
-        if hasattr(data_loader.dataset, 'NUM_PARENT_LABELS'):
-            parent_labels = data_loader.dataset.NUM_PARENT_LABELS
-            child_labels = data_loader.dataset.NUM_CHILD_LABELS
-
-            if hasattr(data_loader.dataset, 'NUM_SUPERCAT_LABELS'):
-                supercat_labels = data_loader.dataset.NUM_SUPERCAT_LABELS
-                model = wrapper(NetClass, num_in_channel, supercat_labels, parent_labels, child_labels, config)
-            else:
-                model = wrapper(NetClass, num_in_channel, parent_labels, child_labels, config)
-        else:
-            model = wrapper(NetClass, num_in_channel, num_labels, config)
+        model = wrapper(NetClass, num_in_channel, num_labels, config)
 
         logging.info('===> Number of trainable parameters: {}: {}'.format(
             wrapper.__name__ + NetClass.__name__, count_parameters(model)))
@@ -132,7 +107,7 @@ def main():
             model.model.load_state_dict(state['state_dict'])
         else:
             if config.lenient_weight_loading:
-                if 'pth' in config.weights:  # CSC
+                if 'pth' in config.weights:  # CSC version of model state
                     matched_weights = load_state_with_same_shape(model, state['state_dict'], prefix='')
                 else:  # Lightning
                     matched_weights = load_state_with_same_shape(model, state['state_dict'], prefix='model.')
@@ -143,16 +118,13 @@ def main():
             else:
                 model.load_state_dict(state['state_dict'])
 
-    # Start Pytorch lightning code from here
+    # Sync bathnorm for multiple GPUs
     if config.num_gpu > 1:
         model = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model)
 
     log_folder = config.log_dir
     num_devices = min(config.num_gpu, torch.cuda.device_count())
     logging.info('Starting training with {} GPUs'.format(num_devices))
-
-    if config.overfit_batches > 0.99:
-        config.overfit_batches = int(config.overfit_batches)
 
     checkpoint_callbacks = [pl.callbacks.ModelCheckpoint(
         dirpath=config.log_dir,
@@ -164,7 +136,7 @@ def main():
 
     # Set wandb project attributes
     wandb_id = randStr()
-    version_num=0
+    version_num = 0
     if config.resume:
         directories = glob.glob(config.resume + '/default/*')
         versions = [int(dir.split('_')[-1]) for dir in directories]
@@ -196,7 +168,6 @@ def main():
             filename='checkpoint-{val_loss:.5f}-{step}',
             save_top_k=1,
             every_n_epochs=1)]
-
     else:
         if 'Classifier' in config.model:
             from lib.train_test.pl_ClassifierTrainer import ClassifierTrainerModule as TrainerModule
@@ -211,7 +182,7 @@ def main():
     loggers = [tensorboard_logger]
     while config.is_train and False:
         try:
-            wandb_logger = WandbLogger(project="3dsemseg", name=run_name, log_model=False, id=config.wandb_id)
+            wandb_logger = WandbLogger(project="lg_semseg", name=run_name, log_model=False, id=config.wandb_id)
             loggers += [wandb_logger]
             break
         except:
@@ -220,7 +191,7 @@ def main():
 
     trainer = Trainer(max_epochs=config.max_epoch, logger=loggers,
                       devices=num_devices, accelerator="gpu", strategy=DDPPlugin(find_unused_parameters=True),
-                      num_sanity_val_steps=0, overfit_batches=config.overfit_batches, accumulate_grad_batches=1,  #int(config.effective_batch_size / config.batch_size)
+                      num_sanity_val_steps=4, accumulate_grad_batches=1,
                       callbacks=[*checkpoint_callbacks, CleanCacheCallback()])
 
     pl_module = TrainerModule(model, config, data_loader.dataset)

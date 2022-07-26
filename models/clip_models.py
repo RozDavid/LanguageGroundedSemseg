@@ -276,7 +276,7 @@ class Res16UNet34DPaired(Res16UNet34): # For SimSiam training
         out = self.relu(out)
 
         # Concat with res 1/8
-        out = me.cat(out, out_b3p8)
+        out = ME.cat(out, out_b3p8)
         out = self.block5(out)
 
         # 1/8 resolution -> 1/4
@@ -286,7 +286,7 @@ class Res16UNet34DPaired(Res16UNet34): # For SimSiam training
         out = self.relu(out)
 
         # Concat with res 1/4
-        out = me.cat(out, out_b2p4)
+        out = ME.cat(out, out_b2p4)
         out = self.block6(out)
 
         # 1/4 resolution -> 1/2
@@ -296,7 +296,7 @@ class Res16UNet34DPaired(Res16UNet34): # For SimSiam training
         out = self.relu(out)
 
         # Concat with res 1/2
-        out = me.cat(out, out_b1p2)
+        out = ME.cat(out, out_b1p2)
         out = self.block7(out)
 
         # 1/2 resolution -> orig
@@ -306,7 +306,7 @@ class Res16UNet34DPaired(Res16UNet34): # For SimSiam training
         out = self.relu(out)
 
         # Concat with orig
-        out = me.cat(out, out_p1)
+        out = ME.cat(out, out_p1)
         out = self.block8(out)
 
         return out  #self.final(out),
@@ -368,7 +368,7 @@ class Res16UNet34C_P(Res16UNet34C):
         out = self.relu(out)
 
         # Concat with res 1/8
-        out = me.cat(out, out_b3p8)
+        out = ME.cat(out, out_b3p8)
         out = self.block5(out)
 
         # 1/8 resolution -> 1/4
@@ -378,7 +378,7 @@ class Res16UNet34C_P(Res16UNet34C):
         out = self.relu(out)
 
         # Concat with res 1/4
-        out = me.cat(out, out_b2p4)
+        out = ME.cat(out, out_b2p4)
         out = self.block6(out)
 
         # 1/4 resolution -> 1/2
@@ -388,7 +388,7 @@ class Res16UNet34C_P(Res16UNet34C):
         out = self.relu(out)
 
         # Concat with res 1/2
-        out = me.cat(out, out_b1p2)
+        out = ME.cat(out, out_b1p2)
         out = self.block7(out)
 
         # 1/2 resolution -> orig
@@ -398,7 +398,7 @@ class Res16UNet34C_P(Res16UNet34C):
         out = self.relu(out)
 
         # Concat with orig
-        out = me.cat(out, out_p1)
+        out = ME.cat(out, out_p1)
         out = self.block8(out)
 
         return self.final(out), out

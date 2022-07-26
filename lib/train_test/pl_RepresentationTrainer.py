@@ -101,11 +101,6 @@ class RepresentationTrainerModule(BaselineTrainerModule):
 
         return outputs
 
-    def on_train_epoch_end(self):
-        # Save target freqs if interested
-        # save_target_freqs(self.target_epoch_freqs, None, self.category_features, self.global_step, self.config)
-        pass
-
     def on_validation_epoch_end(self):
 
         # Log
@@ -147,6 +142,7 @@ class RepresentationTrainerModule(BaselineTrainerModule):
         self.log(f'{phase}/head_loss', self.head_losses.compute())
         self.log(f'{phase}/common_loss', self.common_losses.compute())
         self.log(f'{phase}/tail_loss', self.tail_losses.compute())
+
         self.log(f'{phase}/head_score', nanmean_t(self.head_scores.compute()[self.dataset.frequency_organized_cats[:, 0]]) * 100.)
         self.log(f'{phase}/common_score', nanmean_t(self.common_scores.compute()[self.dataset.frequency_organized_cats[:, 0]]) * 100.)
         self.log(f'{phase}/tail_score', nanmean_t(self.tail_scores.compute()[self.dataset.frequency_organized_cats[:, 0]]) * 100.)
@@ -259,8 +255,6 @@ class RepresentationTrainerModule(BaselineTrainerModule):
             self.tail_scores(valid_pred[split_items[:, 2]], valid_target[split_items[:, 2]])
             self.tail_accuracy(valid_pred[split_items[:, 2]], valid_target[split_items[:, 2]])
 
-        # self.batch_statistics(soutput, target, scene_name, mode)
-
         visualize_dict = {'scene_name': scene_name, 'sinput': sinput}
         prediction_dict = {'final_pred': pred, 'final_target': target,
                            'coords': sinput.C, 'colors': sinput.F,
@@ -269,30 +263,3 @@ class RepresentationTrainerModule(BaselineTrainerModule):
 
         return {**loss_dict, **visualize_dict, **prediction_dict}
 
-
-    def batch_statistics(self, feature_maps, target, scene_name, mode):
-
-        # Save feature maps for correct preds
-        if self.config.sampled_features:
-            index_array = torch.arange(target.shape[0]).to(target.device)
-            for cat_id in target.unique():
-                f_cat_id = cat_id.item()
-                if f_cat_id != self.config.ignore_label:
-                    mapped = self.dataset.inverse_label_map[f_cat_id]
-
-                    inds_for_cat = torch.where(target == f_cat_id, index_array, torch.LongTensor([-1]).to(target.device))
-                    inds_for_cat = inds_for_cat[inds_for_cat != -1].cpu().numpy()
-                    num_to_keep = round(len(inds_for_cat) * self.dataset.sample_props[mapped])
-                    sampled_inds = inds_for_cat[np.random.choice(len(inds_for_cat), size=num_to_keep, replace=False)]
-
-                    sampled_features = feature_maps.F[sampled_inds]
-                    sampled_features = sampled_features.cpu()
-
-                    if mapped in self.category_features:
-                        self.category_features[mapped] = torch.cat((self.category_features[mapped], sampled_features), 0)
-                    else:
-                        self.category_features[mapped] = sampled_features
-
-        if not self.config.is_train and mode == 'validation':
-            # save_feature_maps(feature_maps.F.cpu(), self.config, scene_name[0],  targets=target.cpu(), coords=feature_maps.C.cpu().numpy())
-            pass

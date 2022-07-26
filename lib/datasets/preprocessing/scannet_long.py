@@ -11,7 +11,7 @@ from lib.ext.pointnet2.pointnet2_utils import furthest_point_sample
 
 # Modify path to point where ScanNet data lives
 SCANNET_RAW_PATH = Path('/mnt/data/ScanNet')
-SCANNET_OUT_PATH = Path(f'/mnt/data/Datasets/limited_annotation/scannet_200')
+SCANNET_OUT_PATH = Path('/mnt/data/Datasets/limited_annotation/scannet_200')
 COMBINED_LABEL_NAMES_FILE = 'scannetv2-labels.combined.tsv'
 
 

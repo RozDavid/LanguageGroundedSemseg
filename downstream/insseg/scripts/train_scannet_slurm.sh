@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#set -x
-#set -e
-#set -o pipefail
-
-
 # Add project root to pythonpath
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 insseg_dir="$(dirname "$SCRIPT_DIR")"
@@ -16,12 +11,11 @@ export BATCH_SIZE=$1
 export MODEL=$2
 export POSTFIX=$3
 export PRETRAINED_CHECKPOINT=$4
-export LOSS_TYPE=$5
 export DATASET=Scannet200Voxelization2cmDataset
 
-export DATA_ROOT="/cluster/himring/drozenberszki/ScanNet/scannet_200_insseg"
-export OUTPUT_DIR_ROOT="/cluster/himring/drozenberszki/output/InstanceSegmentation"
-export PRETRAINED_WEIGHTS="/cluster/himring/drozenberszki/weights/"$PRETRAINED_CHECKPOINT
+export DATA_ROOT="/mnt/Data/ScanNet/scannet_200_insseg"
+export OUTPUT_DIR_ROOT="/mnt/Data/outputs"
+export PRETRAINED_WEIGHTS="/mnt/Data/ScanNet/weights/"$PRETRAINED_CHECKPOINT
 
 export TIME=$(date +"%Y-%m-%d_%H-%M-%S")
 export LOG_DIR=$OUTPUT_DIR_ROOT/$DATASET/$MODEL-$POSTFIX
@@ -43,7 +37,5 @@ python ddp_main.py \
     optimizer.lr=0.02 \
     misc.log_dir=${LOG_DIR} \
     misc.num_gpus=8 \
-    hydra.launcher.comment=arxiv_supplemental \
-    optimizer.loss_type=${LOSS_TYPE} \
     net.weights=${PRETRAINED_WEIGHTS} \
     2>&1 | tee -a "$LOG"

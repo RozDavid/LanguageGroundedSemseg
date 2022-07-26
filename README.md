@@ -94,7 +94,7 @@ We also provide a pretrained model checkpoints for both [Res16UNet34C]() and [Re
 ## Downstream Semantic Segmentation
 
 For this stage again modify environment variables 
-``DATA_ROOT`` and``OUTPUT_DIR_ROOT``, then run
+``DATA_ROOT``, ``PRETRAINED_WEIGHTS`` and``OUTPUT_DIR_ROOT``, then run
 
 ```sh
 conda activate lg_semseg
@@ -104,10 +104,16 @@ source scripts/train_models.sh <MODEL> <BATCH_SIZE> <TRAIN_NAME_POSTFIX> <ADDITI
 ## Downstream Instance Segmentation
 
 For instance segmentation we largely rely on the implementation of [Contrastive Scene Contexts](https://github.com/facebookresearch/ContrastiveSceneContexts/tree/main/downstream/insseg).
+The clustering algorithm is based on the PointGroup algoithm, so we have to build that first
+```shell
+cd downstream/insseg/lib/bfs/ops
+python setup.py build_ext --include-dirs=<YOUR_ENV_PATH>/include
+python setup.py install
+```
 
 ```shell
 cd downstream/insseg
-. scripts/train_scannet_slurm.sh <BATCH_SIZE> <MODEL> <TRAINING_POSTFIX> <PRETRAINED_WEIGHTS> <LOSS_TYPE>
+. scripts/train_scannet_slurm.sh <BATCH_SIZE> <MODEL> <TRAINING_POSTFIX> <PRETRAINED_CHECKPOINT>
 ```
 
 ## Acknowledgment

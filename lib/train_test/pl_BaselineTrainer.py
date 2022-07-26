@@ -1,4 +1,5 @@
 import warnings
+
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", RuntimeWarning)
 
@@ -7,9 +8,7 @@ import torch
 from torch import nn
 from lib.dataset import initialize_data_loader
 from lib.datasets import load_dataset
-from lib.utils import precision_at_one, nanmean_t, \
-    fast_hist_torch, per_class_iu_torch, visualize_results, save_ious, print_info, loss_by_name, \
-    save_target_freqs, create_wandb_table, save_feature_maps
+from lib.utils import nanmean_t, fast_hist_torch, per_class_iu_torch, visualize_results, print_info, loss_by_name
 
 from lib.losses.utils import *
 from lib.losses.PointSupConLoss import PointSupConLoss
@@ -23,8 +22,8 @@ from pytorch_lightning import LightningModule
 
 from torchmetrics import Precision  # Precision@1
 from torchmetrics import JaccardIndex  # IoU
-from torchmetrics import AveragePrecision  #mAP
-from torchmetrics import Recall   # we call it accuracy instead
+from torchmetrics import AveragePrecision  # mAP
+from torchmetrics import Recall  # we call it accuracy instead
 from lib.losses.utils import MetricAverageMeter as AverageMeter
 
 
@@ -39,7 +38,7 @@ class BaselineTrainerModule(LightningModule):
         pl.seed_everything(config.seed)
 
         self.config = config
-        self.model = model  #type: nn.Module
+        self.model = model  # type: nn.Module
         self.save_hyperparameters(vars(config))
 
         self.dataset = dataset
@@ -54,7 +53,7 @@ class BaselineTrainerModule(LightningModule):
         # Logging the precisions = scores
         self.scores = Precision(num_classes=self.num_labels, average='macro')
         self.head_scores = Precision(num_classes=self.num_labels, average='none')
-        self.common_scores = Precision(num_classes=self.num_labels,  average='none')
+        self.common_scores = Precision(num_classes=self.num_labels, average='none')
         self.tail_scores = Precision(num_classes=self.num_labels, average='none')
 
         # Logging the accuracies = scores
@@ -64,7 +63,7 @@ class BaselineTrainerModule(LightningModule):
         self.tail_accuracy = Recall(num_classes=self.num_labels, average='none')
 
         # Log IoU scores
-        self.iou_scores = JaccardIndex(num_classes=self.num_labels, reduction='none')
+        self.iou_scores = JaccardIndex(num_classes=self.num_labels, average='none')
 
         # Also tacking care of average precision - from PR curve
         self.aps = torch.zeros((0, self.num_labels))
@@ -129,9 +128,6 @@ class BaselineTrainerModule(LightningModule):
 
         self.validation_max_iter = len(val_data_loader)
 
-        if not hasattr(self, 'val_ious_table'):
-            self.val_ious_table = create_wandb_table(self.dataset)
-
         return val_data_loader
 
     def forward(self, x):
@@ -151,7 +147,6 @@ class BaselineTrainerModule(LightningModule):
         # We have to log the training scores here due to the order of hooks
         if self.config.is_train:
             self.loop_log('training')
-        save_target_freqs(self.target_epoch_freqs, None, self.category_features, self.global_step, self.config)
 
         # put criterions to device
         self.criterion = self.criterion.to(self.device)
@@ -170,13 +165,6 @@ class BaselineTrainerModule(LightningModule):
             self.embedding_criterion.update_confusion_hist(self.iou_scores.confmat.long())
 
         return outputs
-
-    def on_train_epoch_end(self):
-        # Save target freqs if interested
-        #save_target_freqs(self.target_epoch_freqs, None, self.category_features, self.global_step, self.config)
-        pass
-
-
 
     def validation_step(self, batch, batch_idx):
         torch.cuda.empty_cache()
@@ -200,12 +188,7 @@ class BaselineTrainerModule(LightningModule):
                                   prediction=pred, config=self.config, iteration=self.val_iteration,
                                   num_labels=self.num_labels, train_iteration=self.global_step,
                                   valid_labels=class_ids, save_npy=True,
-                                  scene_name=outputs['scene_name'])  # output_features=outputs['output_features']
-
-                curr_hist = fast_hist_torch(outputs['final_pred'].flatten(), outputs['final_target'].flatten(), self.num_labels)
-                curr_iou = per_class_iu_torch(curr_hist) * 100
-                save_ious(curr_iou.cpu().numpy(), self.dataset.get_classnames(), self.config, outputs['scene_name'],
-                          test_iteration=self.val_iteration, train_iteration=self.global_step)
+                                  scene_name=outputs['scene_name'])
 
         if self.val_iteration % self.config.test_stat_freq == 0 and self.val_iteration > 0:
             ious = self.iou_scores.compute()
@@ -256,7 +239,6 @@ class BaselineTrainerModule(LightningModule):
         scheduler = initialize_scheduler(optimizer, self.config)
         return [optimizer], [scheduler]
 
-
     def reset_accumulators(self):
 
         # Reset metric accumulators
@@ -271,7 +253,7 @@ class BaselineTrainerModule(LightningModule):
         self.category_features = {}
         self.target_epoch_freqs = {}
 
-        self.iou_scores.reset(), self. average_precision.reset()
+        self.iou_scores.reset(), self.average_precision.reset()
 
     def loop_log(self, phase='training'):
 
@@ -296,13 +278,12 @@ class BaselineTrainerModule(LightningModule):
             self.log(f'{phase}/head_accuracy', nanmean_t(self.head_accuracy.compute()[self.dataset.head_ids]) * 100.)
             self.log(f'{phase}/common_accuracy', nanmean_t(self.common_accuracy.compute()[self.dataset.common_ids]) * 100.)
             self.log(f'{phase}/tail_accuracy', nanmean_t(self.tail_accuracy.compute()[self.dataset.tail_ids]) * 100.)
-            
+
         if self.embed_losses.total > 0:
             self.log(f'{phase}/embedding_loss', self.embed_losses.compute())
 
         if phase == 'training':
             self.log(phase + '/learning_rate', self.optimizers().param_groups[0]['lr'])
-
 
     def model_step(self, batch, batch_idx, mode='training'):
 
@@ -323,51 +304,9 @@ class BaselineTrainerModule(LightningModule):
         # Feed forward
         soutput, feature_maps = self(*inputs)
 
-        # Eval batch statistics
-        if mode == 'training':
-            self.batch_statistics(feature_maps.F, target, scene_name, mode)
-
         return {'soutput': soutput, 'feature_maps': feature_maps,
                 'target': target, 'sinput': sinput,
                 'scene_name': scene_name, 'mode': mode}
-
-
-    def batch_statistics(self, feature_maps, target, scene_name, mode):
-
-        # Add targets to frequency counter
-        unique_tarets, counts = target.unique(return_counts=True)
-        for t, c in zip(unique_tarets, counts):
-            cat_id = self.dataset.inverse_label_map[t.item()]
-            if cat_id in self.target_epoch_freqs:
-                self.target_epoch_freqs[cat_id] += c.item()
-            else:
-                self.target_epoch_freqs[cat_id] = c.item()
-
-        # Save feature maps for correct preds
-        if self.config.sampled_features:
-            index_array = torch.arange(target.shape[0]).to(target.device)
-            for cat_id in target.unique():
-                f_cat_id = cat_id.item()
-                if f_cat_id != self.config.ignore_label:
-                    mapped = self.dataset.inverse_label_map[f_cat_id]
-
-                    inds_for_cat = torch.where(target == f_cat_id, index_array, torch.LongTensor([-1]).to(target.device))
-                    inds_for_cat = inds_for_cat[inds_for_cat != -1].cpu().numpy()
-                    num_to_keep = round(len(inds_for_cat) * self.dataset.sample_props[mapped])
-                    sampled_inds = inds_for_cat[np.random.choice(len(inds_for_cat), size=num_to_keep, replace=False)]
-
-                    sampled_features = feature_maps[sampled_inds]
-                    sampled_features = sampled_features.cpu()
-
-                    if mapped in self.category_features:
-                        self.category_features[mapped] = torch.cat((self.category_features[mapped], sampled_features), 0)
-                    else:
-                        self.category_features[mapped] = sampled_features
-
-        if mode == 'validation' and not self.config.is_train:
-            # Save feature maps for closes class retrieval
-            # save_feature_maps(feature_maps, self.config, scene_name[0])
-            pass
 
     def eval_step(self, model_step_outputs):
 
@@ -387,8 +326,8 @@ class BaselineTrainerModule(LightningModule):
             if self.config.embedding_loss_type == 'l2':
                 # Feature clusters drove by external centroids
                 emb_loss = embedding_loss(embedding=feature_maps, target=target,
-                                       feature_clusters=self.dataset.loaded_text_features,
-                                       criterion=self.embedding_criterion, config=self.config) * self.config.embedding_loss_lambda
+                                          feature_clusters=self.dataset.loaded_text_features,
+                                          criterion=self.embedding_criterion, config=self.config) * self.config.embedding_loss_lambda
             else:
                 # Contrastive
                 if self.config.use_embedding_loss == 'both':
@@ -413,7 +352,7 @@ class BaselineTrainerModule(LightningModule):
         split_items = None
         if self.config.balanced_category_sampling:
             loss, split_losses, split_items = sample_categories_for_balancing(loss, self.config, self.dataset,
-                                                   targets=target, outputs=soutput.F)
+                                                                              targets=target, outputs=soutput.F)
             self.head_losses(nanmean_t(split_losses[0]), split_losses[0].size(0))
             self.common_losses(nanmean_t(split_losses[1]), split_losses[1].size(0))
             self.tail_losses(nanmean_t(split_losses[2]), split_losses[2].size(0))
@@ -468,7 +407,6 @@ class BaselineTrainerModule(LightningModule):
         self.on_validation_epoch_end()
         print('===> Start testing on original pointcloud space.')
         self.dataset.test_pointcloud(self.config.visualize_path, self.num_labels)
-
 
     def set_classifier_mode(self):
         if self.config.classifier_only:

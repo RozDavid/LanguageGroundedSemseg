@@ -69,3 +69,31 @@ def load_pcd(path):
 
     return pcd, feats, labels
 
+
+def box_intersect(box_a, box_b):
+    return (box_a[0, 0] <= box_b[1, 0] and box_a[1, 0] >= box_b[0, 0]) and (
+            box_a[0, 1] <= box_b[1, 1] and box_a[1, 1] >= box_b[0, 1]) and (
+                   box_a[0, 2] <= box_b[1, 2] and box_a[1, 2] >= box_b[0, 2])
+
+
+def box_contains(parent_box, child_box, inflate_size = 0.):
+
+    parent_min = parent_box[0,:] - inflate_size
+    parent_max = parent_box[1,:] + inflate_size
+
+    child_min = child_box[0,:]
+    child_max = child_box[1, :]
+
+    return np.all(np.greater(child_min, parent_min)) and np.all(np.less(child_max, parent_max))
+
+def box_contains_percentage_inflate(parent_box, child_box, inflate_size = 0.):
+
+    inflate = np.abs(parent_box[0, :] - parent_box[1, :]) * inflate_size
+
+    parent_min = parent_box[0, :] - inflate
+    parent_max = parent_box[1, :] + inflate
+
+    child_min = child_box[0,:]
+    child_max = child_box[1, :]
+
+    return np.all(np.greater(child_min, parent_min)) and np.all(np.less(child_max, parent_max))

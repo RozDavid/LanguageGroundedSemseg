@@ -188,7 +188,7 @@ data_arg.add_argument('--ignore_label', type=int, default=-1)
 data_arg.add_argument('--return_transformation', type=str2bool, default=False)
 data_arg.add_argument('--ignore_duplicate_class', type=str2bool, default=False)
 data_arg.add_argument('--partial_crop', type=float, default=0.)
-data_arg.add_argument('--train_limit_numpoints', type=int, default=0)
+data_arg.add_argument('--train_limit_numpoints', type=int, default=1800000)
 
 # Point Cloud Dataset
 data_arg.add_argument('--scannet_path', type=str, default='', help='Scannet online voxelization dataset root dir')

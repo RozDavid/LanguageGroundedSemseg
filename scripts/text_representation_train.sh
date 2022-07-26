@@ -8,8 +8,7 @@ export MODEL=Res16UNet34D
 export DATASET=Scannet200Textual2cmDataset
 
 export POSTFIX=$2
-export ARGS=$1
-export DATASET_FOLDER=$4
+export ARGS=$3
 
 # export DATA_ROOT="/mnt/Data/ScanNet/scannet_200"
 # export LIMITED_DATA_ROOT="/mnt/Data/ScanNet/limited/"$DATASET_FOLDER

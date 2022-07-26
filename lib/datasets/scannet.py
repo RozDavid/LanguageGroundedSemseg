@@ -17,7 +17,7 @@ from lib.transforms import InstanceAugmentation
 from lib.utils import read_txt, fast_hist, per_class_iu
 
 from lib.constants.scannet_constants import *
-from preprocess.utils import box_intersect
+from lib.datasets.preprocessing.utils import box_intersect
 
 import MinkowskiEngine as ME
 
@@ -108,23 +108,6 @@ class ScannetVoxelizationDataset(VoxelizationDataset):
                     self.instance_sampling_weights[mapped_id] = cat_value
         self.instance_sampling_weights /= self.instance_sampling_weights.sum()
 
-        # Load category weights for splitting the cats based on frequencies
-        cat_weights_path = config.scannet_path + "/" + config.category_frequencies_path
-        assert os.path.isfile(cat_weights_path), 'Cant load category frequencies'
-        with open(cat_weights_path, 'rb') as f:
-            loaded_cat_weights_dict = pickle.load(f)
-        loaded_cat_frequencies = torch.zeros((self.NUM_LABELS))
-        for cat_id, freq in loaded_cat_weights_dict.items():
-            if cat_id in self.VALID_CLASS_IDS:
-                loaded_cat_frequencies[self.label_map[cat_id]] = freq
-        frequency_organized_cats = torch.zeros((self.NUM_LABELS, 3)).bool()
-        sorted_inds = torch.argsort(loaded_cat_frequencies, descending=True)
-        index_3rd = self.NUM_LABELS // 3
-        frequency_organized_cats[sorted_inds[:index_3rd], 0] = True
-        frequency_organized_cats[sorted_inds[index_3rd:-index_3rd], 1] = True
-        frequency_organized_cats[sorted_inds[-index_3rd:], 2] = True
-        self.frequency_organized_cats = frequency_organized_cats
-
         # Precompute a mapping from ids to categories
         self.id2cat_name = {}
         for id, cat_name in zip(self.VALID_CLASS_IDS, self.CLASS_LABELS):
@@ -136,12 +119,6 @@ class ScannetVoxelizationDataset(VoxelizationDataset):
             with open(bb_path, 'rb') as f:
                 self.bounding_boxes = pickle.load(f)
 
-        # For exporting feature statistics we only take a proportion of all category predictions
-        sample_prop_path = config.scannet_path + '/' + config.correct_samples_prop_path
-        if os.path.isfile(sample_prop_path):
-            with open(sample_prop_path, 'rb') as f:
-                self.sample_props = pickle.load(f)
-
         # To use instance level augmentation like color or scale shift
         self.instance_augmentation_transform = InstanceAugmentation(config)
         self.aug_color_prob = config.instance_augmentation_color_aug_prob
@@ -151,13 +128,17 @@ class ScannetVoxelizationDataset(VoxelizationDataset):
         self.head_ids = []
         self.common_ids = []
         self.tail_ids = []
+        self.frequency_organized_cats = torch.zeros(self.NUM_LABELS, 3).bool()
         for scannet_id, scannet_cat in zip(self.VALID_CLASS_IDS, self.CLASS_LABELS):
             if scannet_cat in HEAD_CATS_SCANNET_200:
                 self.head_ids += [self.label_map[scannet_id]]
+                self.frequency_organized_cats[self.label_map[scannet_id], 0] = True
             elif scannet_cat in COMMON_CATS_SCANNET_200:
                 self.common_ids += [self.label_map[scannet_id]]
+                self.frequency_organized_cats[self.label_map[scannet_id], 1] = True
             elif scannet_cat in TAIL_CATS_SCANNET_200:
                 self.tail_ids += [self.label_map[scannet_id]]
+                self.frequency_organized_cats[self.label_map[scannet_id], 2] = True
 
     def add_instances_to_cloud(self, coords, feats, labels, scene_name, transformations):
 
@@ -460,49 +441,6 @@ class ScannetVoxelizationDataset(VoxelizationDataset):
 class ScannetVoxelization2cmDataset(ScannetVoxelizationDataset):
     VOXEL_SIZE = 0.02
 
-
-class ScannetLongVoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_LONG
-    CLASS_LABELS = CLASS_LABELS_LONG
-    VALID_CLASS_IDS = VALID_CLASS_IDS_LONG
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_LONG.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class ScannetLongVoxelization2cmDataset(ScannetLongVoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
-class Scannet100VoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_100
-    CLASS_LABELS = CLASS_LABELS_100
-    VALID_CLASS_IDS = VALID_CLASS_IDS_100
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_100.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class Scannet100Voxelization2cmDataset(Scannet100VoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
-class Scannet50VoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_50
-    CLASS_LABELS = CLASS_LABELS_50
-    VALID_CLASS_IDS = VALID_CLASS_IDS_50
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_50.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class Scannet50Voxelization2cmDataset(Scannet50VoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
 class Scannet200VoxelizationDataset(ScannetVoxelizationDataset):
     # Load constants for label ids
     SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_200
@@ -516,72 +454,4 @@ class Scannet200VoxelizationDataset(ScannetVoxelizationDataset):
 class Scannet200Voxelization2cmDataset(Scannet200VoxelizationDataset):
     VOXEL_SIZE = 0.02
 
-
-class Scannet300VoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_300
-    CLASS_LABELS = CLASS_LABELS_300
-    VALID_CLASS_IDS = VALID_CLASS_IDS_300
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_300.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class Scannet300Voxelization2cmDataset(Scannet300VoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
-class Scannet400VoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_400
-    CLASS_LABELS = CLASS_LABELS_400
-    VALID_CLASS_IDS = VALID_CLASS_IDS_400
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_400.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class Scannet400Voxelization2cmDataset(Scannet400VoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
-class ScannetParentVoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_LONG
-    CLASS_LABELS = PARENT_CLASS_LABELS_40
-    VALID_CLASS_IDS = VALID_PARENT_CLASS_IDS_40
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_LONG.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class ScannetParentVoxelization2cmDataset(ScannetParentVoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-
-class ScannetRandomSubsetVoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_LONG
-    CLASS_LABELS = SUBSET_50_CLASS_LABELS
-    VALID_CLASS_IDS = VALID_SUBSET_50_CLASS_IDS
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_LONG.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class ScannetRandomSubsetVoxelization2cmDataset(ScannetRandomSubsetVoxelizationDataset):
-    VOXEL_SIZE = 0.02
-
-class ScannetHalfParentVoxelizationDataset(ScannetVoxelizationDataset):
-    # Load constants for label ids
-    SCANNET_COLOR_MAP = SCANNET_COLOR_MAP_LONG
-    CLASS_LABELS = PARENT_CLASS_LABELS_20
-    VALID_CLASS_IDS = VALID_PARENT_CLASS_IDS_20
-
-    NUM_LABELS = len(SCANNET_COLOR_MAP_LONG.keys())
-    IGNORE_LABELS = tuple(set(range(NUM_LABELS)) - set(VALID_CLASS_IDS))
-
-
-class ScannetHalfParentVoxelization2cmDataset(ScannetHalfParentVoxelizationDataset):
-    VOXEL_SIZE = 0.02
 
