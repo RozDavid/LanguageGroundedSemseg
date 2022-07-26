@@ -2,6 +2,10 @@
 ### Implementation for our ECCV 2022 paper
 *Note: The full release of this repo is under progress - the necessary code snippets and the training pipeline is published already, but comments and model checkpoints will be released over the next few days.* 
 
+<div align="center">
+    <img src="docs/teaser.jpg" width = 100% >
+</div>
+
 **Abstract -** 
 Recent advances in 3D semantic segmentation with deep neural networks have shown remarkable success, with rapid performance increase on available datasets.
 However, current 3D semantic segmentation benchmarks contain only a small number of categories -- less than 30 for ScanNet and SemanticKITTI, for instance, which are not enough to reflect the diversity of real environments (e.g., semantic image understanding covers hundreds to thousands of classes). 
@@ -12,10 +16,6 @@ To learn more robust 3D features in this context, we propose a language-driven p
 Extensive experiments show that our approach consistently outperforms state-of-the-art 3D pre-training for 3D semantic segmentation on our proposed benchmark (+9% relative mIoU), including limited-data scenarios with +25% relative mIoU using only 5% annotations. 
 
 [arXiv](https://arxiv.org/abs/2204.07761) | [Project Page](https://rozdavid.github.io/scannet200) | [Benchmark](http://kaldir.vc.in.tum.de/scannet_benchmark/) |  [Video](https://www.youtube.com/watch?v=Cu-zW1oXrvU)
-
-<div align="center">
-    <img src="docs/teaser.jpg" width = 100% >
-</div>
 
 **Main Contirbutions:**
   - We propose  a new 200-class 3D semantic segmentation benchmark on real-world 3D ScanNet scene data, considering an order of magnitude more category annotation labels than existing 3D semantic segmentation benchmarks.
