@@ -1,6 +1,5 @@
 ## Language-Grounded Indoor 3D Semantic Segmentation in the Wild 
 ### Implementation for our ECCV 2022 paper
-*Note: The full release of this repo is under progress - the necessary code snippets and the training pipeline is published already, but comments and model checkpoints will be released over the next few days.* 
 
 <div align="center">
     <img src="docs/teaser.jpg" width = 100% >
@@ -8,7 +7,7 @@
 
 **Abstract -** 
 Recent advances in 3D semantic segmentation with deep neural networks have shown remarkable success, with rapid performance increase on available datasets.
-However, current 3D semantic segmentation benchmarks contain only a small number of categories -- less than 30 for ScanNet and SemanticKITTI, for instance, which are not enough to reflect the diversity of real environments (e.g., semantic image understanding covers hundreds to thousands of classes). 
+However, current 3D semantic segmentation benchmarks contain only a small number of categories -- less than 30 for ScanNet and SemanticKITTI, for instance, which are not enough to reflect the diversity of real environments (e.g., semantic image understanding covers hundreds to thousands of classes).
 
 Thus, we propose to study a larger vocabulary for 3D semantic segmentation with a new extended benchmark on ScanNet data with 200 class categories, an order of magnitude more than previously studied.
 This large number of class categories also induces a large natural class imbalance, both of which are challenging for existing 3D semantic segmentation methods.
@@ -44,13 +43,14 @@ conda env create -f config/lg_semseg.yml
 conda activate lg_semseg
 ```
 
-Additionaly [MinkowskiEngine] has to be installed manually with specified CUDA version. 
+Additionaly [MinkowskiEngine](https://github.com/NVIDIA/MinkowskiEngine) has to be installed manually with specified CUDA version. 
 E.g. for CUDA 11.1 run 
 
 ```sh
 export CUDA_HOME=/usr/local/cuda-11.1
 pip install -U git+https://github.com/NVIDIA/MinkowskiEngine -v --no-deps --install-option="--blas=openblas"
 ```
+Note: We use 0.5.x versions, where the pretrained weights are not compatible with models trained with 0.4.x ME releases.
 
 ## Dataset
 
@@ -73,6 +73,26 @@ cd lib/preprocessing
 python scannet200_insseg.py --input <SCANNET_PATH>
 ```
 
+After the ScanNet200 dataset is preprocessed we provide [extracted data files](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/feature_data.zip) that we preprocessed for our method.
+The Zip file with all the necessary content can be downloaded from here and should be placed in the same folder where the processed data files live.
+Please refer to our paper how these files were created and what they are used for.
+So the preprocessed dataset should look something like this: 
+
+```
+    feature_data/
+        |--clip_feats_scannet_200.pkl
+        |--dataset_frequencies.pkl
+        |--scannet200_category_weights.pkl
+        |-- ...
+    train/
+       |--scene0000_00.ply
+       |--scene0000_01.ply
+       |--...
+    train.txt
+    val.txt
+```
+
+
 ## Language Grounded Pretraining
 
 The goal of this stage is to anchor the representation space to the much more structured
@@ -89,7 +109,7 @@ source scripts/text_representation_train.sh <BATCH_SIZE> <TRAIN_NAME_POSTFIX> <A
 
 Refer to our [config](config/config.py) file for additional training and vealuation parameters. 
 
-We also provide a pretrained model checkpoints for both [Res16UNet34C]() and [Res16UNet34D]() and the precomputed CLIP features for anchoring.
+We also provide a pretrained model checkpoints for different model sizes and the precomputed CLIP features for anchoring the pretraining stage.
 
 ## Downstream Semantic Segmentation
 
@@ -115,6 +135,18 @@ python setup.py install
 cd downstream/insseg
 . scripts/train_scannet_slurm.sh <BATCH_SIZE> <MODEL> <TRAINING_POSTFIX> <PRETRAINED_CHECKPOINT>
 ```
+
+## Model Zoo
+
+We provide trained models form our method and different stages. Pretrain stage means that we only anchored model representations to the CLIP text encodings, while finetuned models can be directly evaluated on ScanNet200. 
+
+| Model Architecture | Pretrain Strategy |  Stage   |                                                       Link                                                       |
+|:-------------------|:-----------------:|:--------:|:----------------------------------------------------------------------------------------------------------------:|
+| Res16UNet34D       |       Ours        | Pretrain |            [download](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/Weights/34D/34D_CLIP_pretrain.ckpt)            |
+| Res16UNet34D       |       Ours        | Finetune |            [download](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/Weights/34D/34D_CLIP_finetune.ckpt)            |
+| Res16UNet34C       |       Ours        | Pretrain | [download](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/Weights/34C/34C_CLIP_pretrain.ckpt) |
+| Res16UNet34C       |       Ours        | Finetune | [download](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/Weights/34C/34C_CLIP_finetune.ckpt) |
+
 
 ## Acknowledgment
 We thank the authors of [CSC](https://github.com/facebookresearch/ContrastiveSceneContexts) and [SpatioTemporalSegmentation](https://github.com/chrischoy/SpatioTemporalSegmentation) for their valuable work and open-source implementations.
