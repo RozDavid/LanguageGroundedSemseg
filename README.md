@@ -16,9 +16,9 @@ Extensive experiments show that our approach consistently outperforms state-of-t
 
 [arXiv](https://arxiv.org/abs/2204.07761) | [Project Page](https://rozdavid.github.io/scannet200) | [Benchmark](http://kaldir.vc.in.tum.de/scannet_benchmark/) |  [Video](https://www.youtube.com/watch?v=Cu-zW1oXrvU)
 
-**Main Contirbutions:**
-  - We propose  a new 200-class 3D semantic segmentation benchmark on real-world 3D ScanNet scene data, considering an order of magnitude more category annotation labels than existing 3D semantic segmentation benchmarks.
-  - In order to guide the construction of robust 3D semantic feature representations for this challenging task, we propose to align geometric feature extraction to the category embedding of the CLIP pretrained language model. This results in improved performance both overall and in the rarely seen, including in the limited-data regime.
+**Main Contributions:**
+  - We propose a new 200-class 3D semantic segmentation benchmark on real-world 3D ScanNet scene data, considering an order of magnitude more category annotation labels than existing 3D semantic segmentation benchmarks.
+  - To guide the construction of robust 3D semantic feature representations for this challenging task, we propose to align geometric feature extraction to the category embedding of the CLIP pretrained language model. This results in improved performance both overall and in the rarely seen, including in the limited-data regime.
 
 For any code-related or other questions open an issue [here](https://github.com/RozDavid/LanguageGroundedSemseg/issues) or contact [David Rozenberszki](https://rozdavid.github.io) 
 
@@ -43,7 +43,7 @@ conda env create -f config/lg_semseg.yml
 conda activate lg_semseg
 ```
 
-Additionaly [MinkowskiEngine](https://github.com/NVIDIA/MinkowskiEngine) has to be installed manually with specified CUDA version. 
+Additionally, [MinkowskiEngine](https://github.com/NVIDIA/MinkowskiEngine) has to be installed manually with a specified CUDA version. 
 E.g. for CUDA 11.1 run 
 
 ```sh
@@ -54,19 +54,20 @@ Note: We use 0.5.x versions, where the pretrained weights are not compatible wit
 
 ## Dataset
 
-In this project we are focusing on a much more realistic scenario of 3D indoor semantic segmentation, focusing on a much larger set of categories. 
-For this we proposed the ScanNet200 Benchmark as a modification of the original ScanNet dataset, but with an order of magnitude more categories. 
+In this project we are focusing on a much more realistic scenario of 3D indoor semantic segmentation, with a much larger set of categories. 
+For this, we proposed the ScanNet200 Benchmark as a modification of the original ScanNet dataset, but with an order of magnitude more categories. 
 
-For downloading the raw dataset please refer to the instructions at the official [GitHub page](https://github.com/ScanNet/ScanNet). If the dataset was previously downloaded, the only thing needs to be changed is the label mapping file ```scannetv2-labels.combined.tsv``` .
-Benchmark submissions can be made at the [benchmark page](http://kaldir.vc.in.tum.de/scannet_benchmark/), additional helper scripts can be found [here](https://github.com/ScanNet/ScanNet/tree/master/BenchmarkScripts/ScanNet200). 
+For downloading the raw data, please refer to the instructions on the official [GitHub page](https://github.com/ScanNet/ScanNet). 
+If ScanNet was previously downloaded for an earlier project, the only thing that needs to be updated is the label mapping file ```scannetv2-labels.combined.tsv``` .
+Benchmark submissions can be made at the [benchmark page](http://kaldir.vc.in.tum.de/scannet_benchmark/), while helper scripts can be found [here](https://github.com/ScanNet/ScanNet/tree/master/BenchmarkScripts/ScanNet200). 
 
-To preprocess the raw data to this project for semantic segmentation (both full annotation and limited annotation), modify the path values in the first few lines of the script and run:
+To preprocess the raw data for this project for semantic segmentation (both fully annotated and limited annotation scenario), modify the path values in the first few lines of the script and run:
 
 ```sh
 cd lib/preprocessing
 python scannet_long.py
 ```
-Or for instance segmentation
+And for instance segmentation
 
 ```sh
 cd lib/preprocessing
@@ -75,7 +76,7 @@ python scannet200_insseg.py --input <SCANNET_PATH>
 
 After the ScanNet200 dataset is preprocessed we provide [extracted data files](https://kaldir.vc.in.tum.de/rozenberszki/language_grounded_semseg/feature_data.zip) that we preprocessed for our method.
 The Zip file with all the necessary content can be downloaded from here and should be placed in the same folder where the processed data files live.
-Please refer to our paper how these files were created and what they are used for.
+Please refer to our paper on how these files were created and what they are used for.
 So the preprocessed dataset should look something like this: 
 
 ```
@@ -96,10 +97,10 @@ So the preprocessed dataset should look something like this:
 ## Language Grounded Pretraining
 
 The goal of this stage is to anchor the representation space to the much more structured
-language-based CLIP space. For this we first preprocess CLIP text encodings of ScanNet200 categories to save computation, 
-then pretrain our models with our Contrastive loss formulation detailed in our paper
+language-based CLIP space. For this, we first preprocess CLIP text encodings of ScanNet200 categories to save computation, 
+then pretrain our models with our Contrastive loss formulation detailed in our paper.
 
-For this stage again modify environment variables 
+For this stage, again modify environment variables 
 ``DATA_ROOT`` and``OUTPUT_DIR_ROOT``, then run
 
 ```sh
@@ -107,9 +108,9 @@ conda activate lg_semseg
 source scripts/text_representation_train.sh <BATCH_SIZE> <TRAIN_NAME_POSTFIX> <ADDITIONAL_ARGS>
 ```
 
-Refer to our [config](config/config.py) file for additional training and vealuation parameters. 
+Refer to our [config](config/config.py) file for additional training and validation parameters. 
 
-We also provide a pretrained model checkpoints for different model sizes and the precomputed CLIP features for anchoring the pretraining stage.
+We also provide pretrained model checkpoints for different model sizes and the precomputed CLIP features for anchoring the pretraining stage.
 
 ## Downstream Semantic Segmentation
 
@@ -123,8 +124,8 @@ source scripts/train_models.sh <MODEL> <BATCH_SIZE> <TRAIN_NAME_POSTFIX> <ADDITI
 
 ## Downstream Instance Segmentation
 
-For instance segmentation we largely rely on the implementation of [Contrastive Scene Contexts](https://github.com/facebookresearch/ContrastiveSceneContexts/tree/main/downstream/insseg).
-The clustering algorithm is based on the PointGroup algoithm, so we have to build that first
+For instance segmentation, we largely rely on the implementation of [Contrastive Scene Contexts](https://github.com/facebookresearch/ContrastiveSceneContexts/tree/main/downstream/insseg).
+The clustering algorithm is based on the PointGroup algorithm, so we have to build that first
 ```shell
 cd downstream/insseg/lib/bfs/ops
 python setup.py build_ext --include-dirs=<YOUR_ENV_PATH>/include
@@ -138,7 +139,7 @@ cd downstream/insseg
 
 ## Model Zoo
 
-We provide trained models form our method and different stages. Pretrain stage means that we only anchored model representations to the CLIP text encodings, while finetuned models can be directly evaluated on ScanNet200. 
+We provide trained models from our method and at different stages. Pretrain stage means where we only anchored model representations to the CLIP text encodings, while finetuned models can be directly evaluated on ScanNet200. 
 
 | Model Architecture | Pretrain Strategy |  Stage   |                                                       Link                                                       |
 |:-------------------|:-----------------:|:--------:|:----------------------------------------------------------------------------------------------------------------:|
