@@ -64,13 +64,13 @@ Benchmark submissions can be made at the [benchmark page](http://kaldir.vc.in.tu
 To preprocess the raw data for this project for semantic segmentation (both fully annotated and limited annotation scenario), modify the path values in the first few lines of the script and run:
 
 ```sh
-cd lib/preprocessing
+cd lib/datasets/preprocessing
 python scannet_long.py
 ```
 And for instance segmentation
 
 ```sh
-cd lib/preprocessing
+cd lib/datasets/preprocessing
 python scannet200_insseg.py --input <SCANNET_PATH>
 ```
 
